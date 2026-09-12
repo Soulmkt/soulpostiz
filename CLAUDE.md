@@ -55,6 +55,16 @@ do soulconnect §2 e nos cards SPTZ-3 a SPTZ-8.
 | `SOUL_COMMENTS_LOOKBACK_DAYS` | `30` | mídias mais antigas que isso não são lidas |
 | `SOUL_COMMENTS_WORKFLOW_VERSION` | `1` | entra no workflowId; subir ao mudar a lógica do workflow e encerrar o antigo no Temporal |
 
+## Gotchas
+
+- **App Meta em modo desenvolvimento filtra dados de terceiros.** `GET /{media}/comments` devolve
+  `data: []` com cursores mesmo com `comments_count > 0`. Não é bug do coletor: só contas com
+  papel no app (testador, admin) aparecem até o App Review liberar o Live (SPTZ-11).
+- O compose de produção declara cada variável em `environment:`; variável nova no `.env` **não
+  chega ao container** sem a linha correspondente no `docker-compose.yml`.
+- Workflow em execução no Temporal não troca de código: ao mudar a lógica do workflow, subir
+  `SOUL_COMMENTS_WORKFLOW_VERSION` (novo workflowId) e encerrar o antigo.
+
 ## Ambiente local
 
 Guia oficial: `https://docs.postiz.app/installation/development`. WSL, Node 20+,
