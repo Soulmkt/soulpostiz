@@ -6,7 +6,12 @@ deploy.
 
 | Data | Customização | Onde no código | Imagem | Card |
 |---|---|---|---|---|
-| 12/09/2026 | Fork criado, branch `soulmkt-main` congelada em v2.23.0, docs iniciais (`CLAUDE.md`, `PATCHES.md`, este arquivo) | raiz, `.claude/docs/` | produção ainda na imagem oficial `ghcr.io/gitroomhq/postiz-app:v2.23.0` | SPTZ-1, SPTZ-2 |
+| 12/09/2026 | Fork criado, branch `soulmkt-main` congelada em v2.23.0, docs iniciais (`CLAUDE.md`, `PATCHES.md`, este arquivo) | raiz, `.claude/docs/` | (docs) | SPTZ-2 |
+| 12/09/2026 | **Primeiro deploy do fork em produção**, sem alteração de código: prova do pipeline build no VPS → dump → troca no compose → rollback documentado. Swap de 8 GB criado no VPS. | `.claude/skills/deploy.md`, `/root/soulpostiz-deploy.sh` no VPS | `soulpostiz:v2.23.0-soul.1` (commit 974415b) | SPTZ-1 |
+
+Produção em 12/09/2026 22:20 UTC: `postiz.soulmkt.com.br` roda
+`soulpostiz:v2.23.0-soul.1`. Imagem oficial anterior
+(`ghcr.io/gitroomhq/postiz-app:v2.23.0`) continua no host pra rollback.
 
 ## Em desenvolvimento
 
