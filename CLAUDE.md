@@ -46,6 +46,15 @@ Ver `.claude/docs/customizacoes-implementadas.md`. A primeira é o **módulo
 Comentários** (Fase 1: Instagram; Fase 2: TikTok), desenho na doc de entrada
 do soulconnect §2 e nos cards SPTZ-3 a SPTZ-8.
 
+## Variáveis de ambiente do fork (no `.env` do VPS)
+
+| Variável | Default | Efeito |
+|---|---|---|
+| `SOUL_COMMENTS_COLLECTOR` | (desligado) | `true` sobe o workflow `soul-comments-collector-v<versão>` no Temporal quando o backend inicia |
+| `SOUL_COMMENTS_INTERVAL_MINUTES` | `10` | intervalo entre rodadas do coletor |
+| `SOUL_COMMENTS_LOOKBACK_DAYS` | `30` | mídias mais antigas que isso não são lidas |
+| `SOUL_COMMENTS_WORKFLOW_VERSION` | `1` | entra no workflowId; subir ao mudar a lógica do workflow e encerrar o antigo no Temporal |
+
 ## Ambiente local
 
 Guia oficial: `https://docs.postiz.app/installation/development`. WSL, Node 20+,

@@ -6,12 +6,16 @@ import { AutopostService } from '@gitroom/nestjs-libraries/database/prisma/autop
 import { EmailActivity } from '@gitroom/orchestrator/activities/email.activity';
 import { IntegrationsActivity } from '@gitroom/orchestrator/activities/integrations.activity';
 import { HealthController } from '@gitroom/orchestrator/health.controller';
+// soulpostiz
+import { SoulCommentsActivity } from '@gitroom/orchestrator/soul/soul.comments.activity';
 
 const activities = [
   PostActivity,
   AutopostService,
   EmailActivity,
   IntegrationsActivity,
+  // soulpostiz
+  SoulCommentsActivity,
 ];
 @Module({
   imports: [

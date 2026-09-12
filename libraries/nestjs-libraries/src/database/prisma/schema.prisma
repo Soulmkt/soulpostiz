@@ -968,3 +968,62 @@ model Announcement {
   color       AnnouncementColor @default(INFO)
   createdAt   DateTime          @default(now())
 }
+
+// ---------------------------------------------------------------------------
+// soulpostiz (SoulMkt): módulo Comentários. Modelos com prefixo Soul, sem relação
+// declarada com os modelos do upstream (só ids), pra manter o merge limpo.
+// ---------------------------------------------------------------------------
+
+enum SoulCommentStatus {
+  NEW
+  QUEUED
+  AUTO_REPLIED
+  REPLIED
+  IGNORED
+  SKIPPED
+}
+
+model SoulMediaSync {
+  id             String    @id @default(uuid())
+  organizationId String
+  integrationId  String
+  externalPostId String
+  postId         String?
+  permalink      String?
+  caption        String?
+  publishedAt    DateTime?
+  commentsCount  Int       @default(0)
+  lastSyncAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([integrationId, externalPostId])
+  @@index([organizationId, publishedAt])
+}
+
+model SoulComment {
+  id                String            @id @default(uuid())
+  organizationId    String
+  integrationId     String
+  postId            String?
+  externalPostId    String
+  externalCommentId String            @unique
+  parentExternalId  String?
+  authorUsername    String?
+  authorId          String?
+  text              String
+  commentedAt       DateTime
+  postPublishedAt   DateTime?
+  fetchedAt         DateTime          @default(now())
+  status            SoulCommentStatus @default(NEW)
+  classification    String?
+  replyText         String?
+  replyExternalId   String?
+  repliedAt         DateTime?
+  raw               Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([organizationId, status, commentedAt])
+  @@index([integrationId, externalPostId])
+}
