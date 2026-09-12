@@ -1,70 +1,59 @@
-This project is Postiz, a tool to schedule social media and chat posts to 28+ channels.
-You can add posts to the calendar, they will be added into a workflow and posted at the right time.
-You can find things like:
-- Schedule posts
-- Calendar view
-- Analytics
-- Team management
-- Media library
+# soulpostiz: guia para o Claude e para quem desenvolve
 
-This project is a monorepo with a root only package.json of dependencies.
-Made with PNPM.
-We have 3 important folders
+Fork do [Postiz](https://github.com/gitroomhq/postiz-app) mantido pela
+SoulMkt. Roda em `postiz.soulmkt.com.br`. Versão base **congelada na
+v2.23.0** (tag do upstream, commit `1e4c8dd`), branch de trabalho
+**`soulmkt-main`**. `main` só espelha o upstream para comparação.
 
-- apps/backend - this is where the API code is (NESTJS)
-- apps/orchestrator - this is temporal, it's for background jobs (NESTJS) it contains all the workflows and activities
-- apps/frontend - this is the code of the frontend (Vite ReactJS)
-- /libraries contains a lot of services shared between backend and orchestrator and frontend components.
+Documentação de entrada, decisões e contexto: repo `soulconnect`,
+`.claude/docs/soulpostiz-onboarding-dev.md`. Registro de cada trabalho: projeto
+**SPTZ** no Plane (`plane.soulmkt.com.br`, workspace desenvolvimento).
 
-We are using only pnpm, don't use any other dependency manager.
-Never install frontend components from npmjs, focus on writing native components.
+## Regras absolutas
 
-The project uses tailwind 3, before writing any component look at:
-- /apps/frontend/src/app/colors.scss
-- /apps/frontend/src/app/global.scss
-- /apps/frontend/tailwind.config.js
+1. **Nunca atualizar o upstream por impulso.** Release nova é candidata a merge,
+   decidida pelo Gilmar e registrada no SPTZ-10. Merge sempre em branch, com
+   testes e dump do banco antes de subir.
+2. **Código novo em pastas `soul/`**: `apps/backend/src/soul/`,
+   `apps/frontend/src/components/soul/`, `apps/orchestrator/src/soul/`,
+   `libraries/nestjs-libraries/src/soul/`. Modelos Prisma com prefixo `Soul`.
+3. **Todo toque em arquivo do core vai pro `PATCHES.md`** (arquivo, motivo,
+   como reaplicar). Toque mínimo: import, item de menu, rota registrada.
+4. **Migração Prisma nomeada** (`soul_<assunto>`). Nunca `db push` em produção.
+5. **Segredo nenhum no repo.** `.env` real só no VPS (`/opt/postiz/.env`) e no
+   souldesk (acesso `postiz`).
+6. **Texto de interface em pt-BR**, sem travessão.
+7. **Imagem própria** `soulpostiz:v2.23.0-soul.N`; o compose de produção nunca
+   aponta pra `latest`.
+8. **Inventário atualizado**: toda customização entregue entra em
+   `.claude/docs/customizacoes-implementadas.md` e no card do SPTZ, com a tag
+   da imagem em que subiu.
 
-All the --color-custom* are deprecated, don't use them.
+## Mapa do repo (o que importa pra nós)
 
-And check other components in the system before to get the right design.
+| Onde | O que |
+|---|---|
+| `apps/backend` | API NestJS (rotas em `src/api/routes/`) |
+| `apps/frontend` | Next.js (menu, telas) |
+| `apps/orchestrator` | workflows/activities do Temporal; providers publicam daqui; o coletor de comentários roda aqui |
+| `apps/workers`, `apps/cron` | filas e tarefas agendadas |
+| `libraries/nestjs-libraries/src/database/prisma/schema.prisma` | banco |
+| `libraries/nestjs-libraries/src/integrations/social/` | providers (instagram, instagram.standalone, tiktok...) |
 
-When working on the backend we need to pass the 3 layers:
-DTO >> Controller >> Service >> Repository (no shortcuts)
-In some cases we will have
-DTO >> Controller >> Manager >> Service >> Repository.
+## Customizações
 
-Most of the server logic should be inside of libs/server.
-The backend repository is mostly used to write controller, and import files from libs.server.
+Ver `.claude/docs/customizacoes-implementadas.md`. A primeira é o **módulo
+Comentários** (Fase 1: Instagram; Fase 2: TikTok), desenho na doc de entrada
+do soulconnect §2 e nos cards SPTZ-3 a SPTZ-8.
 
-For the frontend follow this:
-- Many of the UI components lives in /apps/frontend/src/components/ui
-- Routing is in /apps/frontend/src/app
-- Components are in /apps/frontend/src/components
-- always use SWR to fetch stuff, and use "useFetch" hook from /libraries/helpers/src/utils/custom.fetch.tsx
+## Ambiente local
 
-When using SWR, each one have to be in a separate hook and must comply with react-hooks/rules-of-hooks, never put eslint-disable-next-line on it.
+Guia oficial: `https://docs.postiz.app/installation/development`. WSL, Node 20+,
+pnpm, `docker-compose.dev.yaml` (Postgres, Redis, Temporal), `pnpm run
+prisma-db-push`, `pnpm run dev`.
 
-It means that this is valid:
-const useCommunity = () => {
-   return useSWR....
-}
+## Deploy
 
-This is not valid:
-const useCommunity = () => {
-  return {
-    communities: () => useSWR<CommunitiesListResponse>("communities", getCommunities),
-    providers: () => useSWR<ProvidersListResponse>("providers", getProviders),
-  };
-}
-
-- Linting of the project can run only from the root.
-- Use only pnpm.
-- Never use RAW SQL queries, always use Prisma.
-- The system is in production with many users, if you want to change something, you need to be sure that you are not breaking anything for existing users and a migration might be needed
-- Whenever you generate a PR, PR description, or similar, **always** follow the PR Template (.github/PULL_REQUEST_TEMPLATE.md)
-- Avoid as much as possible creating new files with pure logic of algorithms, it's usually wrong
-- When you write code, make sure that what you add looks like something similar somewhere else in the code, don't make weird patterns
-- When you finished running, run another agents that matches the new code with the existing system code, to see that it looks similar and is not a weird pattern.
-- Workflows files can never be changed if they are already in origin/main, because changing a workflow will fail all its activities, instead create a new workflow with the version, and everywhere the workflow being called, change it to the new workflow version.
-- Workflows activities parameters cannot be changed, as it will break the workflow, if we need to change the parameters, if we need to change the parameters, we need to create a new activity with the new parameters, and then create a new workflow that uses the new activity.
-- Code must always be generic, there can't be a way that a specific logic, let's say facebook or instagram, appear in a file that use a generic logic, instead, we need to edit the interface of the provider, add another function, and then generically call it from the generic code, and then implement the specific logic in the provider implementation. we can't have something like if(facebookProvider) {} inside a non facebook provider file. 
+Sem CI e sem staging. Dump → build no VPS → troca da tag no compose → `up -d`
+→ conferir → registrar. Passo a passo na doc de entrada §7 (validar no
+primeiro deploy, card SPTZ-1). Evitar 12h e 18h BRT (posts do acervo).
