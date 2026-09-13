@@ -12,17 +12,15 @@ const GRAPH_VERSION = 'v21.0';
 const MAX_ATTEMPTS = 3;
 const MAX_LEN = 280;
 
-// Modelos sem IA (fallback). Primeira pessoa, curtos, terminam em pergunta leve.
+// Modelos sem IA (fallback). Regras do Gilmar (13/09/2026): primeira pessoa, curto, agradece
+// o que a pessoa disse, NÃO presume o que é o post (pode ser apresentação, calendário,
+// ecossistema, espécie ou história) e NUNCA termina em pergunta.
 const PRAISE_TEMPLATES = [
-  'Que bom que gostou! Essa eu fotografei aqui perto de casa. Você já viu uma dessas por aí?',
-  'Obrigado! Cada saída rende uma surpresa dessas. Qual bicho ou planta você mais quer ver por aqui?',
-  'Fico feliz que tenha curtido. Tem muito mais no site, link na bio. Você conhece esse cantinho da Mata Atlântica?',
-  'Valeu! Essa foto deu trabalho, mas valeu cada minuto. Já topou com uma assim na trilha?',
-  'Obrigado pela força! Tem mais dessa história no site, link na bio. O que você quer que eu mostre em seguida?',
-];
-const QUESTION_TEMPLATES = [
-  'Boa pergunta! A resposta está na legenda e, com mais detalhe, na página da espécie no site, link na bio. Você já viu uma dessas?',
-  'Está na legenda, e a página da espécie no site (link na bio) conta onde e quando encontrei. Ficou alguma dúvida?',
+  'Muito obrigado! Fico feliz que tenha gostado.',
+  'Obrigado! Isso me anima a continuar mostrando o que vive por aqui.',
+  'Valeu demais! Tem muito mais no site, link na bio.',
+  'Obrigado pelo carinho! Vem mais por aí.',
+  'Que bom que gostou, obrigado!',
 ];
 
 type Generated = { text: string; engine: string };
@@ -50,6 +48,12 @@ export class SoulCommentsReplyService {
     for (const comment of await this._repo.listByStatusAll(SoulCommentStatus.AUTO_PENDING, limit)) {
       try {
         const rule = await this._repo.getEffectiveRule(comment.organizationId, comment.integrationId);
+        // Sem IA, só elogio ganha modelo pronto; pergunta vai pra revisão humana (feedback Gilmar 13/09)
+        if (!this.hasAi() && comment.classification !== 'PRAISE') {
+          await this._repo.setReplyError(comment.id, 'sem IA configurada: pergunta vai pra revisão humana', true);
+          summary.queued++;
+          continue;
+        }
         const media = await this._repo.getMediaSync(comment.integrationId, comment.externalPostId);
         const gen = await this.generate(comment, rule, media?.caption || null, media?.permalink || null);
         await this._repo.setReplyDraft(comment.id, gen.text, gen.engine);
@@ -122,6 +126,10 @@ export class SoulCommentsReplyService {
 
   // ---------- geração ----------
 
+  hasAi() {
+    return !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
+  }
+
   async generate(comment: SoulComment, rule: SoulCommentRule, caption: string | null, permalink: string | null): Promise<Generated> {
     const fallback = this.template(comment);
     try {
@@ -134,7 +142,7 @@ export class SoulCommentsReplyService {
   }
 
   private template(comment: SoulComment): Generated {
-    const list = comment.classification === 'QUESTION_ANSWERABLE' ? QUESTION_TEMPLATES : PRAISE_TEMPLATES;
+    const list = PRAISE_TEMPLATES;
     // variação determinística por comentário, pra não repetir a mesma frase em sequência
     let h = 0;
     for (const ch of comment.externalCommentId) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -145,7 +153,7 @@ export class SoulCommentsReplyService {
     return `Você responde comentários no Instagram em nome do dono do perfil. Escreva a resposta final, em português do Brasil, sem aspas, sem explicação.
 
 Voz do perfil:
-${rule.voiceProfile || 'Primeira pessoa, curto, cordial, sem gíria forçada, sem citar nome de pessoa, sem travessão.'}
+${rule.voiceProfile || 'Primeira pessoa, curto, cordial, sem gíria forçada, sem citar nome de pessoa, sem travessão, sem pergunta no fim.'}
 
 Sobre o perfil e as fontes:
 ${rule.knowledgeSummary || '(sem resumo cadastrado)'}
@@ -154,8 +162,10 @@ Regras:
 - Até ${MAX_LEN} caracteres, uma ou duas frases.
 - Primeira pessoa. Nunca citar nome de pessoa nem @ de terceiros.
 - Nunca use travessão.
-- Se for elogio: agradeça de forma específica ao que a pessoa disse e termine com uma pergunta leve que convide a continuar a conversa.
-- Se for pergunta respondível: responda com o que está na legenda do post; se faltar detalhe, aponte a página da espécie no site (link na bio) sem inventar dado.
+- NUNCA termine com pergunta. Nenhuma pergunta na resposta.
+- Leia a legenda antes: o post pode ser a apresentação do projeto, um calendário, um ecossistema, uma espécie ou uma história. Não presuma que é uma foto de bicho nem diga "essa eu fotografei" a menos que a legenda deixe claro.
+- Se for elogio: agradeça de forma específica ao que a pessoa disse, em uma frase, e no máximo mais uma frase ligada ao conteúdo do post.
+- Se for pergunta respondível: responda direto com o que está na legenda; se faltar detalhe, aponte o site (link na bio) sem inventar dado.
 - Não prometa nada, não peça follow, não use hashtag, no máximo um emoji.
 
 Post (legenda): """${(caption || '').slice(0, 1200)}"""
