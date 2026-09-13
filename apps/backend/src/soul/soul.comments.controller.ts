@@ -30,7 +30,13 @@ export class SoulCommentsController {
     const st = (Object.values(SoulCommentStatus) as string[]).includes(status || '')
       ? (status as SoulCommentStatus)
       : SoulCommentStatus.QUEUED;
-    return this._repo.listForOrg(org.id, st, customerId || undefined, Math.min(Number(take) || 50, 200));
+    const rows = await this._repo.listForOrg(org.id, st, customerId || undefined, Math.min(Number(take) || 50, 200));
+    const medias = await this._repo.getMediaByExternalIds([...new Set(rows.map((r) => r.externalPostId))]);
+    const byKey = new Map(medias.map((m) => [m.integrationId + ':' + m.externalPostId, m]));
+    return rows.map((r) => {
+      const m = byKey.get(r.integrationId + ':' + r.externalPostId);
+      return { ...r, media: m ? { permalink: m.permalink, caption: m.caption ? m.caption.slice(0, 160) : null } : null };
+    });
   }
 
   @Get('/summary')

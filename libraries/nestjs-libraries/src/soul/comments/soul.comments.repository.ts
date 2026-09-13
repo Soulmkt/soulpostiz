@@ -79,6 +79,14 @@ export class SoulCommentsRepository {
     });
   }
 
+  getMediaByExternalIds(externalPostIds: string[]) {
+    if (!externalPostIds.length) return Promise.resolve([]);
+    return this._prisma.model.soulMediaSync.findMany({
+      where: { externalPostId: { in: externalPostIds } },
+      select: { externalPostId: true, integrationId: true, permalink: true, caption: true },
+    });
+  }
+
   // ---------- comentários ----------
 
   // Cria o comentário como NEW; se já existe, só atualiza texto e payload bruto
