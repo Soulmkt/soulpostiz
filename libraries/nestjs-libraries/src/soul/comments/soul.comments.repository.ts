@@ -1,18 +1,37 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { Prisma, SoulCommentStatus } from '@prisma/client';
+import { Prisma, SoulCommentMode, SoulCommentRule, SoulCommentStatus } from '@prisma/client';
+import { SoulCommentRuleDto } from '@gitroom/nestjs-libraries/dtos/soul/soul.comment.rule.dto';
 
 // Providers do Instagram que o coletor entende. Os dois usam a Graph API com o mesmo
 // formato de mídia/comentários; muda só o host e a forma do token.
 export const SOUL_INSTAGRAM_PROVIDERS = ['instagram-standalone', 'instagram'];
 
+// Regra usada quando a organização não cadastrou nenhuma: tudo passa por revisão.
+const FALLBACK_RULE = {
+  id: 'fallback',
+  organizationId: '',
+  customerId: null,
+  mode: SoulCommentMode.REVIEW_ALL,
+  autoLabels: ['PRAISE', 'QUESTION_ANSWERABLE'],
+  ignoreLabels: ['SPAM'],
+  voiceProfile: null,
+  knowledgeSummary: null,
+  knowledgeUrl: null,
+  notifyEmails: [],
+  createdAt: new Date(0),
+  updatedAt: new Date(0),
+} as unknown as SoulCommentRule;
+
 @Injectable()
 export class SoulCommentsRepository {
   constructor(
     private _prisma: PrismaRepository<
-      'soulComment' | 'soulMediaSync' | 'integration' | 'post'
+      'soulComment' | 'soulMediaSync' | 'soulCommentRule' | 'integration' | 'post'
     >
   ) {}
+
+  // ---------- canais e posts ----------
 
   listInstagramIntegrations() {
     return this._prisma.model.integration.findMany({
@@ -32,6 +51,8 @@ export class SoulCommentsRepository {
       select: { id: true, publishDate: true },
     });
   }
+
+  // ---------- mídias ----------
 
   getMediaSync(integrationId: string, externalPostId: string) {
     return this._prisma.model.soulMediaSync.findUnique({
@@ -57,6 +78,8 @@ export class SoulCommentsRepository {
       update: rest,
     });
   }
+
+  // ---------- comentários ----------
 
   // Cria o comentário como NEW; se já existe, só atualiza texto e payload bruto
   // (o status é do fluxo de resposta, nunca volta pra NEW por causa de uma releitura).
@@ -108,6 +131,36 @@ export class SoulCommentsRepository {
     });
   }
 
+  listNewForClassification(take = 50) {
+    return this._prisma.model.soulComment.findMany({
+      where: { status: SoulCommentStatus.NEW },
+      orderBy: { commentedAt: 'asc' },
+      take,
+    });
+  }
+
+  applyClassification(
+    id: string,
+    data: {
+      classification: string;
+      classificationConfidence: number;
+      classificationReason: string;
+      status: SoulCommentStatus;
+    }
+  ) {
+    return this._prisma.model.soulComment.update({
+      where: { id },
+      data: { ...data, classifiedAt: new Date() },
+    });
+  }
+
+  setStatus(organizationId: string, id: string, status: SoulCommentStatus) {
+    return this._prisma.model.soulComment.update({
+      where: { id, organizationId },
+      data: { status },
+    });
+  }
+
   countByStatus(organizationId: string) {
     return this._prisma.model.soulComment.groupBy({
       by: ['status'],
@@ -116,15 +169,71 @@ export class SoulCommentsRepository {
     });
   }
 
-  listByStatus(
-    organizationId: string,
-    status: SoulCommentStatus,
-    take = 50
-  ) {
+  listByStatus(organizationId: string, status: SoulCommentStatus, take = 50) {
     return this._prisma.model.soulComment.findMany({
       where: { organizationId, status },
       orderBy: { commentedAt: 'desc' },
       take,
     });
+  }
+
+  // Lista pra tela: mais novo primeiro, com filtro opcional por Customer (via canal).
+  async listForOrg(organizationId: string, status: SoulCommentStatus, customerId?: string, take = 50) {
+    let integrationIds: string[] | undefined;
+    if (customerId) {
+      const ints = await this._prisma.model.integration.findMany({
+        where: { organizationId, customerId, deletedAt: null },
+        select: { id: true },
+      });
+      integrationIds = ints.map((i) => i.id);
+    }
+    return this._prisma.model.soulComment.findMany({
+      where: {
+        organizationId,
+        status,
+        ...(integrationIds ? { integrationId: { in: integrationIds } } : {}),
+      },
+      orderBy: { commentedAt: 'desc' },
+      take,
+    });
+  }
+
+  // ---------- regras ----------
+
+  listRules(organizationId: string) {
+    return this._prisma.model.soulCommentRule.findMany({ where: { organizationId } });
+  }
+
+  // Regra efetiva: a do Customer do canal; senão a padrão da organização (customerId nulo);
+  // senão o fallback conservador (tudo pra revisão).
+  async getEffectiveRule(organizationId: string, integrationId: string): Promise<SoulCommentRule> {
+    const integration = await this._prisma.model.integration.findUnique({
+      where: { id: integrationId },
+      select: { customerId: true },
+    });
+    const rules = await this._prisma.model.soulCommentRule.findMany({ where: { organizationId } });
+    const byCustomer = integration?.customerId ? rules.find((r) => r.customerId === integration.customerId) : undefined;
+    const orgDefault = rules.find((r) => r.customerId === null);
+    return byCustomer || orgDefault || { ...FALLBACK_RULE, organizationId };
+  }
+
+  async upsertRule(organizationId: string, dto: SoulCommentRuleDto) {
+    const customerId = dto.customerId || null;
+    const existing = await this._prisma.model.soulCommentRule.findFirst({
+      where: { organizationId, customerId },
+    });
+    const data = {
+      mode: dto.mode as SoulCommentMode,
+      autoLabels: dto.autoLabels ?? ['PRAISE', 'QUESTION_ANSWERABLE'],
+      ignoreLabels: dto.ignoreLabels ?? ['SPAM'],
+      voiceProfile: dto.voiceProfile ?? null,
+      knowledgeSummary: dto.knowledgeSummary ?? null,
+      knowledgeUrl: dto.knowledgeUrl ?? null,
+      notifyEmails: dto.notifyEmails ?? [],
+    };
+    if (existing) {
+      return this._prisma.model.soulCommentRule.update({ where: { id: existing.id }, data });
+    }
+    return this._prisma.model.soulCommentRule.create({ data: { organizationId, customerId, ...data } });
   }
 }

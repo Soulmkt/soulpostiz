@@ -53,6 +53,8 @@ do soulconnect §2 e nos cards SPTZ-3 a SPTZ-8.
 | `SOUL_COMMENTS_COLLECTOR` | (desligado) | `true` sobe o workflow `soul-comments-collector-v<versão>` no Temporal quando o backend inicia |
 | `SOUL_COMMENTS_INTERVAL_MINUTES` | `10` | intervalo entre rodadas do coletor |
 | `SOUL_COMMENTS_LOOKBACK_DAYS` | `30` | mídias mais antigas que isso não são lidas |
+| `ANTHROPIC_API_KEY` ou `OPENAI_API_KEY` | (vazio) | classificador usa Anthropic (preferido) ou OpenAI; sem chave cai na heurística conservadora |
+| `SOUL_CLASSIFIER_MODEL` | `claude-haiku-4-5-20251001` / `gpt-4.1-mini` | modelo do classificador |
 | `SOUL_COMMENTS_WORKFLOW_VERSION` | `1` | entra no workflowId; subir ao mudar a lógica do workflow e encerrar o antigo no Temporal |
 
 ## Gotchas

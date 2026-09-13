@@ -976,6 +976,7 @@ model Announcement {
 
 enum SoulCommentStatus {
   NEW
+  AUTO_PENDING
   QUEUED
   AUTO_REPLIED
   REPLIED
@@ -1017,6 +1018,9 @@ model SoulComment {
   fetchedAt         DateTime          @default(now())
   status            SoulCommentStatus @default(NEW)
   classification    String?
+  classificationConfidence Float?
+  classificationReason     String?
+  classifiedAt             DateTime?
   replyText         String?
   replyExternalId   String?
   repliedAt         DateTime?
@@ -1026,4 +1030,28 @@ model SoulComment {
 
   @@index([organizationId, status, commentedAt])
   @@index([integrationId, externalPostId])
+}
+
+enum SoulCommentMode {
+  AUTO
+  REVIEW_ALL
+  OFF
+}
+
+// Regra de comentários por Customer (customerId nulo = padrão da organização)
+model SoulCommentRule {
+  id               String          @id @default(uuid())
+  organizationId   String
+  customerId       String?
+  mode             SoulCommentMode @default(REVIEW_ALL)
+  autoLabels       Json            @default("[\"PRAISE\", \"QUESTION_ANSWERABLE\"]")
+  ignoreLabels     Json            @default("[\"SPAM\"]")
+  voiceProfile     String?
+  knowledgeSummary String?
+  knowledgeUrl     String?
+  notifyEmails     Json            @default("[]")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([organizationId, customerId])
 }
