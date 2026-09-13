@@ -59,6 +59,14 @@ do soulconnect §2 e nos cards SPTZ-3 a SPTZ-8.
 | `SOUL_REPLY_MODEL` | igual ao classificador | modelo do gerador de resposta |
 | `SOUL_COMMENTS_WORKFLOW_VERSION` | `1` | entra no workflowId; subir ao mudar a lógica do workflow e encerrar o antigo no Temporal |
 
+## Regras de voz das respostas (Gilmar, 13/09/2026)
+
+- A resposta **nunca termina em pergunta**.
+- **Ler a legenda antes**: o post pode ser apresentação do acervo, calendário, ecossistema, espécie
+  ou história; nunca presumir "essa eu fotografei".
+- Elogio: agradecer o que a pessoa disse em 1 frase, no máximo 2. Primeira pessoa, sem nome, sem travessão.
+- Sem chave de IA, só elogio recebe modelo pronto; pergunta vai pra revisão humana.
+
 ## Gotchas
 
 - **App Meta em modo desenvolvimento filtra dados de terceiros.** `GET /{media}/comments` devolve
