@@ -58,8 +58,10 @@ do soulconnect §2 e nos cards SPTZ-3 a SPTZ-8.
 ## Gotchas
 
 - **App Meta em modo desenvolvimento filtra dados de terceiros.** `GET /{media}/comments` devolve
-  `data: []` com cursores mesmo com `comments_count > 0`. Não é bug do coletor: só contas com
-  papel no app (testador, admin) aparecem até o App Review liberar o Live (SPTZ-11).
+  `data: []` com cursores mesmo com `comments_count > 0`. Não é bug do coletor, e **conta testadora
+  também é filtrada** (medido 12/09/2026 com palhassoulmkt): o conteúdo dos comentários só
+  aparece com o app Live após App Review (SPTZ-11). O campo aninhado `comments{...}` é
+  omitido em silêncio, `comments_count` vem normal.
 - O compose de produção declara cada variável em `environment:`; variável nova no `.env` **não
   chega ao container** sem a linha correspondente no `docker-compose.yml`.
 - Workflow em execução no Temporal não troca de código: ao mudar a lógica do workflow, subir
