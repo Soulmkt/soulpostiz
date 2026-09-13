@@ -40,7 +40,10 @@ O script: confere que a imagem existe → **dump do Postgres** em
 `/root/postiz-pre-<tag>-<data>.sql.gz` → backup do compose → troca a linha
 `image:` do serviço `postiz` → `docker compose up -d postiz` → espera
 `healthy` → imprime front (307 é o esperado, redireciona pro login), as
-variáveis das redes e a versão → imprime a linha de **rollback**.
+variáveis das redes e a versão → **espera a API responder** (`/api/user/self`
+devolvendo 401; se continuar 502 por 3 min, faz `pm2 restart backend` e espera de
+novo, porque o backend do pm2 já travou em silêncio no boot) → imprime a linha
+de **rollback**.
 
 Na subida o `pm2-run` roda `prisma db push` contra o banco de produção. É o
 comportamento do upstream; migração nossa entra como migração nomeada no
@@ -53,6 +56,9 @@ código, mas o `db push` continua rodando no start.
    backend, orchestrator e frontend `online`.
 3. Logs sem erro: `docker logs postiz --since 3m 2>&1 | grep -i -E "error|exception"`
    (ignorar `connect() failed` do nginx nos primeiros segundos).
+3b. `curl -s -o /dev/null -w "%{http_code}" https://postiz.soulmkt.com.br/api/user/self`
+   devolve **401** (backend no ar). 502 = backend travado no boot mesmo com pm2
+   `online`; `docker exec postiz pm2 restart backend` e conferir de novo.
 4. Login no Postiz, calendário abre, `integrationList` pelo MCP responde.
 5. Contagem de posts igual à de antes.
 

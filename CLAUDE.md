@@ -78,6 +78,12 @@ do soulconnect §2 e nos cards SPTZ-3 a SPTZ-8.
   chega ao container** sem a linha correspondente no `docker-compose.yml`.
 - Workflow em execução no Temporal não troca de código: ao mudar a lógica do workflow, subir
   `SOUL_COMMENTS_WORKFLOW_VERSION` (novo workflowId) e encerrar o antigo.
+- **O backend do pm2 pode travar em silêncio no boot** (medido no deploy da soul.6, 13/09/2026): container
+  `healthy`, pm2 `online`, mas o processo node fica com 0,3 s de CPU, porta 3000 fechada e nenhuma
+  linha de log; o nginx devolve 502 em todo `/api/*` e a tela mostra "Application error". O health
+  check do container não cobre o backend. Conferir `curl -s -o /dev/null -w "%{http_code}" https://postiz.soulmkt.com.br/api/user/self`
+  (401 = no ar); se 502 passados 3 min, `docker exec postiz pm2 restart backend`. O
+  `/root/soulpostiz-deploy.sh` já faz essa espera e o restart sozinho.
 
 ## Ambiente local
 
