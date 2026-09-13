@@ -198,6 +198,51 @@ export class SoulCommentsRepository {
     });
   }
 
+  // ---------- respostas (SPTZ-5) ----------
+
+  getIntegration(id: string) {
+    return this._prisma.model.integration.findUnique({ where: { id } });
+  }
+
+  // Todos os Customers/orgs: usado pelo loop do orchestrator
+  listByStatusAll(status: SoulCommentStatus, take = 50) {
+    return this._prisma.model.soulComment.findMany({
+      where: { status },
+      orderBy: { commentedAt: 'asc' },
+      take,
+    });
+  }
+
+  getById(organizationId: string, id: string) {
+    return this._prisma.model.soulComment.findFirst({ where: { id, organizationId } });
+  }
+
+  setReplyDraft(id: string, replyText: string, replyEngine: string) {
+    return this._prisma.model.soulComment.update({
+      where: { id },
+      data: { replyText, replyEngine, replyGeneratedAt: new Date(), status: SoulCommentStatus.REPLY_READY, replyError: null },
+    });
+  }
+
+  setReplied(id: string, replyText: string, replyExternalId: string) {
+    return this._prisma.model.soulComment.update({
+      where: { id },
+      data: { status: SoulCommentStatus.AUTO_REPLIED, replyText, replyExternalId, repliedAt: new Date(), replyError: null },
+    });
+  }
+
+  // Erro ao publicar: guarda o motivo; depois do limite de tentativas volta pra fila com o texto pronto
+  setReplyError(id: string, replyError: string, giveUp: boolean, replyAttempts?: number) {
+    return this._prisma.model.soulComment.update({
+      where: { id },
+      data: {
+        replyError,
+        ...(replyAttempts !== undefined ? { replyAttempts } : {}),
+        ...(giveUp ? { status: SoulCommentStatus.QUEUED } : {}),
+      },
+    });
+  }
+
   // ---------- regras ----------
 
   listRules(organizationId: string) {

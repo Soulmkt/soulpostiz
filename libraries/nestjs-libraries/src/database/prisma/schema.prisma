@@ -977,6 +977,7 @@ model Announcement {
 enum SoulCommentStatus {
   NEW
   AUTO_PENDING
+  REPLY_READY
   QUEUED
   AUTO_REPLIED
   REPLIED
@@ -1022,8 +1023,12 @@ model SoulComment {
   classificationReason     String?
   classifiedAt             DateTime?
   replyText         String?
+  replyEngine       String?
+  replyGeneratedAt  DateTime?
   replyExternalId   String?
   repliedAt         DateTime?
+  replyError        String?
+  replyAttempts     Int               @default(0)
   raw               Json?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt

@@ -55,6 +55,8 @@ do soulconnect §2 e nos cards SPTZ-3 a SPTZ-8.
 | `SOUL_COMMENTS_LOOKBACK_DAYS` | `30` | mídias mais antigas que isso não são lidas |
 | `ANTHROPIC_API_KEY` ou `OPENAI_API_KEY` | (vazio) | classificador usa Anthropic (preferido) ou OpenAI; sem chave cai na heurística conservadora |
 | `SOUL_CLASSIFIER_MODEL` | `claude-haiku-4-5-20251001` / `gpt-4.1-mini` | modelo do classificador |
+| `SOUL_REPLY_DRY_RUN` | (desligado) | `true` gera o texto da resposta e para em REPLY_READY, sem publicar. Manter ligado até o app Meta estar Live |
+| `SOUL_REPLY_MODEL` | igual ao classificador | modelo do gerador de resposta |
 | `SOUL_COMMENTS_WORKFLOW_VERSION` | `1` | entra no workflowId; subir ao mudar a lógica do workflow e encerrar o antigo no Temporal |
 
 ## Gotchas

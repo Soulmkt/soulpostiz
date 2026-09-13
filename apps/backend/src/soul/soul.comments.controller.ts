@@ -5,6 +5,7 @@ import { Organization, SoulCommentStatus } from '@prisma/client';
 import { SoulCommentsRepository } from '@gitroom/nestjs-libraries/soul/comments/soul.comments.repository';
 import { SoulCommentsClassifierService } from '@gitroom/nestjs-libraries/soul/comments/soul.comments.classifier.service';
 import { SoulCommentsCollectorService } from '@gitroom/nestjs-libraries/soul/comments/soul.comments.collector.service';
+import { SoulCommentsReplyService } from '@gitroom/nestjs-libraries/soul/comments/soul.comments.reply.service';
 import { SoulCommentRuleDto } from '@gitroom/nestjs-libraries/dtos/soul/soul.comment.rule.dto';
 
 // API do módulo Comentários (soulpostiz). Autenticação e organização vêm dos guards do Postiz.
@@ -14,7 +15,8 @@ export class SoulCommentsController {
   constructor(
     private _repo: SoulCommentsRepository,
     private _classifier: SoulCommentsClassifierService,
-    private _collector: SoulCommentsCollectorService
+    private _collector: SoulCommentsCollectorService,
+    private _reply: SoulCommentsReplyService
   ) {}
 
   // Fila e histórico: ?status=QUEUED|AUTO_PENDING|NEW|... (padrão: QUEUED), ?customerId=, ?take=
@@ -36,6 +38,8 @@ export class SoulCommentsController {
     return {
       byStatus: await this._repo.countByStatus(org.id),
       engine: this._classifier.engineName(),
+      replyEngine: this._reply.engineName(),
+      replyDryRun: this._reply.dryRun(),
     };
   }
 
@@ -54,7 +58,8 @@ export class SoulCommentsController {
   async run(@GetOrgFromRequest() org: Organization) {
     const collect = await this._collector.collectAll();
     const classify = await this._classifier.classifyNew(100);
-    return { collect, classify };
+    const reply = await this._reply.processAutoPending(50);
+    return { collect, classify, reply };
   }
 
   // Ação manual: QUEUED -> IGNORED (descartar) ou -> AUTO_PENDING (aprovar pra resposta automática)
@@ -69,5 +74,29 @@ export class SoulCommentsController {
       return { error: 'status inválido' };
     }
     return this._repo.setStatus(org.id, id, status as SoulCommentStatus);
+  }
+
+  // Resposta manual: publica o texto informado (ou o já gerado) agora, mesmo em dry-run
+  @Post('/:id/reply')
+  async reply(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string,
+    @Body('text') text?: string
+  ) {
+    const comment = await this._repo.getById(org.id, id);
+    if (!comment) return { error: 'comentário não encontrado' };
+    const result = await this._reply.publish(comment, text);
+    return { result, comment: await this._repo.getById(org.id, id) };
+  }
+
+  // Gera (ou regenera) o texto sem publicar
+  @Post('/:id/regenerate')
+  async regenerate(@GetOrgFromRequest() org: Organization, @Param('id') id: string) {
+    const comment = await this._repo.getById(org.id, id);
+    if (!comment) return { error: 'comentário não encontrado' };
+    const rule = await this._repo.getEffectiveRule(org.id, comment.integrationId);
+    const media = await this._repo.getMediaSync(comment.integrationId, comment.externalPostId);
+    const gen = await this._reply.generate(comment, rule, media?.caption || null, media?.permalink || null);
+    return this._repo.setReplyDraft(comment.id, gen.text, gen.engine);
   }
 }

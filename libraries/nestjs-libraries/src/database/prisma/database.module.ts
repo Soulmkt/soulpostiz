@@ -48,6 +48,7 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
 import { SoulCommentsRepository } from '@gitroom/nestjs-libraries/soul/comments/soul.comments.repository';
 import { SoulCommentsCollectorService } from '@gitroom/nestjs-libraries/soul/comments/soul.comments.collector.service';
 import { SoulCommentsClassifierService } from '@gitroom/nestjs-libraries/soul/comments/soul.comments.classifier.service';
+import { SoulCommentsReplyService } from '@gitroom/nestjs-libraries/soul/comments/soul.comments.reply.service';
 
 @Global()
 @Module({
@@ -105,6 +106,7 @@ import { SoulCommentsClassifierService } from '@gitroom/nestjs-libraries/soul/co
     SoulCommentsRepository,
     SoulCommentsCollectorService,
     SoulCommentsClassifierService,
+    SoulCommentsReplyService,
   ],
   get exports() {
     return this.providers;
